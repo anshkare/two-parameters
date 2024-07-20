@@ -1,0 +1,50 @@
+---
+title: "Two Parameters"
+author: "Ansh Kare"
+format: html
+execute: 
+  echo: false
+---
+```{r}
+#| echo: FALSE
+library(tidyverse)
+library(primer.data)
+library(brms)
+library(tidybayes)
+library(gtsummary)
+```
+
+```{r}
+nhanes |> filter(sex == "Male", age >=18)|>select(height)|>
+drop_na()|>
+ggplot(aes(x= height))+
+geom_histogram(bins = 50)+
+labs(title = "Male Adult Height in the US in 2010", x = "Height (cm)", y = "count", caption = "Source : Nationa
+l Health and Nutrition Survey")
+```
+```{r}
+#| cache: TRUE
+fit_male_height<- brm(formula = height ~ 1, data = nhanes, family = gaussian(), silent = 2, refresh = 0, seed = 12)
+
+```
+We wanted to find the specific question of whether the next person we meet would be above 180 centimeters. We used the data from NHANES a survey recorded across the US and took the height of those to make a prediction. However that data is from 2010 and we are trying to predict the future , so assuming validity we combined the data with our preceptor table and NHANES data. One important thing to note is that our data is from a survey which is voluntary and not all countries were surveyed thoroughly meaning there is some bias to the data. Then we used a statistical model to determine the average height of a male. Next we focused to a specific question being whether the next person we meet would be above 180 cm with a odds of 30%.
+```{r}
+tbl_regression(fit_male_height, intercept = TRUE)
+
+```
+```{r}
+#|label: plot
+ndata <- tibble(.rows = 1)
+fit_male_height |> add_predicted_draws(newdata = ndata)|>
+ggplot(aes(x = .prediction))+
+geom_histogram(aes(y = after_stat(count/sum(count))))+
+labs(title ="Average male height", subtitle = "What are the chances the next person you meet is abov 180 cm?", x = "Height", y = "count" )+
+scale_x_continuous(labels = scales::number_format())+
+scale_y_continuous(labels = scales::percent_format(accuracy = 1))
+```
+```{r}
+fit_male_height |> add_predicted_draws(newdata = ndata)|>
+mutate(tall = if_else(.prediction > 180, TRUE, FALSE))|>
+summarize(odds = mean(tall))
+```
+
